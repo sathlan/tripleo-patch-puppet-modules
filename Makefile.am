@@ -1,0 +1,3 @@
+AUTOMAKE_OPTIONS = foreign
+SUBDIRS = bin test
+EXTRA_DIST = LICENSE.txt README.md

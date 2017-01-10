@@ -1,0 +1,32 @@
+### https://github.com/manicmaniac/cookiecutter-shellscript-autotools
+
+# http://www.gnu.org/software/automake
+
+Makefile
+Makefile.in
+
+# http://www.gnu.org/software/autoconf
+
+/autom4te.cache
+/aclocal.m4
+/compile
+/configure
+/depcomp
+/stamp-h1
+/config.log
+/config.status
+/autoscan.log
+/configure.scan
+/*.tar.gz
+
+/test/test*.log
+/test/test*.trs
+
+/install-sh
+/missing
+/test-driver
+
+# package specific settings
+
+/bin/tripleo-patch-puppet-modules
+/test/test-tripleo-patch-puppet-modules.bats

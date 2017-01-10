@@ -1,0 +1,10 @@
+language: C # actually shell script
+install:
+  - aclocal
+  - automake --add-missing
+  - autoreconf
+  - ./configure
+script:
+  - make check
+after_failure:
+  - cat test/test-suite.log

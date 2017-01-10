@@ -1,0 +1,99 @@
+#!/usr/bin/bash
+
+HELP='Patch puppet modules in tripleo deployment on the overcloud.'
+VERSION='@VERSION@'
+
+set -eu
+
+function clean {
+    [ -z "${DIR_RPM}" ] || sudo rm -rf "${DIR_RPM}"
+}
+trap clean SIGINT SIGTERM EXIT
+
+usage()
+{
+    cat <<EOF
+${HELP}
+
+usage: $(basename "$0") -r PUPPET-MODULE-SHORT-NAME:REVIEW_ID[_REVIEW_ID_...][,PUPPET-MODULE-SHORT-NAME:REVIEW_ID[_...],...]
+                     -s SOURCE: source can be any of:
+                         - "filesystem" : copy from filesystem
+                         - "rpm": from a rpm
+                         - "git": clone the repo
+       $(basename "$0") -v  : display version
+EOF
+}
+
+get_puppet_module()
+{
+    local source=$1
+    local module=$2
+
+    case $source in
+        filesystem)
+            cp -a "/usr/share/openstack-puppet/modules/${module}" ~/puppet-modules
+            ;;
+        rpm)
+            [ -n "${DIR_RPM}" ] || DIR_RPM=$(mktemp -d)
+            sudo mkdir -p "${DIR_RPM}/etc"
+            sudo cp -a /etc/yum.repos.d "${DIR_RPM}/etc"
+            sudo yum install -y --installroot="${DIR_RPM}" "puppet-${module}"
+            cp -a "${DIR_RPM}/usr/share/openstack-puppet/modules/${module}" ~/puppet-modules
+            ;;
+        git)
+            git clone "git://git.openstack.org/openstack/puppet-${module}" "${HOME}/puppet-modules/${module}"
+            ;;
+        *)
+
+    esac
+}
+
+SOURCE='filesystem'
+DIR_RPM=''
+REVIEWS=''
+while getopts :vhr:s: OPT; do
+    case $OPT in
+        '' | -h | --help)
+            usage
+            exit 0
+            ;;
+        v|+v)
+            echo "$VERSION"
+            exit 0
+            ;;
+        r|+r)
+            REVIEWS="$OPTARG"
+            ;;
+        s|+s)
+            SOURCE="$OPTARG"
+            ;;
+        *)
+            usage
+            exit 1
+            ;;
+    esac
+done
+shift $((OPTIND - 1))
+OPTIND=1
+
+[ -n "${REVIEWS}" ] || usage
+
+mkdir -p ~/puppet-modules
+
+{
+    IFS=,
+    for module_reviews in $REVIEWS; do
+        while IFS=: read module reviews; do
+            rm -rf "${HOME}/puppet-modules/${module}/"
+            get_puppet_module "${SOURCE}" "${module}"
+            {
+                IFS=_
+                for review in $reviews; do
+                    curl "https://review.openstack.org/changes/${review}/revisions/current/patch?download" | \
+                        base64 -d | \
+                        patch -d "${HOME}/puppet-modules/${module}/" -p1
+                done
+            }
+        done < <(echo "${module_reviews}")
+    done
+}

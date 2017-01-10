@@ -1,0 +1,12 @@
+#!#!/usr/bin/env bats
+# -*- mode: sh -*-
+
+. ./helper.sh
+
+@test "version" {
+    [ "@VERSION@" = "$(tripleo-patch-puppet-modules -v)" ]
+}
+
+@test "lint" {
+    shellcheck --shell=bash ../bin/tripleo-patch-puppet-modules
+}
